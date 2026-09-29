@@ -7,6 +7,14 @@ namespace SecureLab.Api.Application.Incidents;
 
 public sealed class IncidentQueries(SecureLabDbContext dbContext, ILogger<IncidentQueries> logger)
 {
+    private static readonly IncidentSeverity[] SeverityOrder =
+    [
+        IncidentSeverity.Critical,
+        IncidentSeverity.High,
+        IncidentSeverity.Medium,
+        IncidentSeverity.Low
+    ];
+
     public async Task<IReadOnlyList<IncidentListItemResponse>> GetListAsync(
         IncidentStatus? status,
         CancellationToken cancellationToken)
@@ -57,5 +65,38 @@ public sealed class IncidentQueries(SecureLabDbContext dbContext, ILogger<Incide
                         comment.CreatedAtUtc))
                     .ToList()))
             .SingleOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<IncidentSeveritySummaryResponse>> GetSeveritySummaryAsync(
+        IncidentStatus? status,
+        CancellationToken cancellationToken)
+    {
+        var query = dbContext.Incidents.AsNoTracking();
+        if (status is not null)
+        {
+            query = query.Where(incident => incident.Status == status);
+        }
+
+        var groups = await query
+            .GroupBy(incident => incident.Severity)
+            .Select(item => new { Severity = item.Key, Count = item.Count() })
+            .ToListAsync(cancellationToken);
+
+        var countsBySeverity = groups.ToDictionary(item => item.Severity, item => item.Count);
+
+        // Політика: лише наявні групи, сталий порядок за критичністю.
+        var summary = SeverityOrder
+            .Where(countsBySeverity.ContainsKey)
+            .Select(severity => new IncidentSeveritySummaryResponse(
+                severity.ToString(),
+                countsBySeverity[severity]))
+            .ToList();
+
+        logger.LogInformation(
+            "Severity summary built: {GroupCount} groups, status filter {Status}",
+            summary.Count,
+            status);
+
+        return summary;
     }
 }
