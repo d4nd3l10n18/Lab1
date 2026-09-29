@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using SecureLab.Api.Application.Incidents;
@@ -30,6 +31,16 @@ if (resetRequested)
     return;
 }
 
+var requestLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("SecureLab.Request");
+app.Use(async (context, next) =>
+{
+    var traceId = Activity.Current?.Id ?? context.TraceIdentifier;
+    using (requestLogger.BeginScope(new Dictionary<string, object> { ["TraceId"] = traceId }))
+    {
+        await next(context);
+    }
+});
+
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
@@ -60,6 +71,13 @@ app.MapGet("/health", async (SecureLabDbContext dbContext, CancellationToken can
     .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
 
 app.MapIncidentEndpoints();
+
+app.Map("/api/{**path}", () => Results.Problem(
+        title: "Ресурс не знайдено",
+        detail: "Такого API-маршруту не існує.",
+        statusCode: StatusCodes.Status404NotFound))
+    .ExcludeFromDescription();
+
 app.MapFallbackToFile("index.html");
 
 app.Run();
