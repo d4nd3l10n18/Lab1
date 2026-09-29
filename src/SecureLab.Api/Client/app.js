@@ -2,6 +2,10 @@ const listElement = document.querySelector("#incident-list");
 const listStatusElement = document.querySelector("#list-status");
 const detailsElement = document.querySelector("#incident-details");
 const filterForm = document.querySelector("#filter-form");
+const summaryButton = document.querySelector("#summary-button");
+const summaryStatusFilter = document.querySelector("#summary-status-filter");
+const summaryStatusElement = document.querySelector("#summary-status");
+const summaryListElement = document.querySelector("#summary-list");
 
 async function apiFetch(path, options = {}) {
   const response = await fetch(path, {
@@ -78,6 +82,22 @@ function renderIncidentDetails(incident) {
   detailsElement.replaceChildren(heading, metadata, description, commentsHeading, comments);
 }
 
+function renderSeveritySummary(summaryItems) {
+  summaryListElement.replaceChildren();
+
+  if (summaryItems.length === 0) {
+    summaryStatusElement.textContent = "Даних немає";
+    return;
+  }
+
+  summaryStatusElement.textContent = `Груп: ${summaryItems.length}`;
+  for (const summary of summaryItems) {
+    const item = document.createElement("li");
+    item.textContent = `${summary.severity}: ${summary.count}`;
+    summaryListElement.append(item);
+  }
+}
+
 async function loadIncidents() {
   listStatusElement.textContent = "Завантаження…";
   listElement.replaceChildren();
@@ -103,9 +123,25 @@ async function loadIncidentDetails(id) {
   }
 }
 
+async function loadSeveritySummary() {
+  summaryStatusElement.textContent = "Завантаження…";
+  summaryListElement.replaceChildren();
+
+  const status = summaryStatusFilter.value;
+  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+
+  try {
+    renderSeveritySummary(await apiFetch(`/api/incidents/severity-summary${query}`));
+  } catch {
+    summaryStatusElement.textContent = "Не вдалося завантажити підсумок. Спробуйте пізніше.";
+  }
+}
+
 filterForm.addEventListener("submit", (event) => {
   event.preventDefault();
   loadIncidents();
 });
+
+summaryButton.addEventListener("click", loadSeveritySummary);
 
 loadIncidents();
