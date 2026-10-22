@@ -1,3 +1,4 @@
+using SecureLab.Api.Scaffolding;
 using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
@@ -71,6 +72,7 @@ app.MapGet("/health", async (SecureLabDbContext dbContext, CancellationToken can
     .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
 
 app.MapIncidentEndpoints();
+app.MapLab02Endpoints();
 
 app.Map("/api/{**path}", () => Results.Problem(
         title: "Ресурс не знайдено",
