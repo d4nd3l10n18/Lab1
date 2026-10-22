@@ -3,3 +3,6 @@
 GET {{baseUrl}}/api/incidents/search?q=навчальн
 ### Легітимний апостроф
 GET {{baseUrl}}/api/incidents/search?q=O%27Brien
+
+### USB
+GET {{baseUrl}}/api/incidents/search?q=USB
