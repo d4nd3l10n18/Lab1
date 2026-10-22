@@ -27,20 +27,80 @@ public static class Lab02Endpoints
         });
         app.MapPost("/api/incidents", async (CreateIncidentRequest request, SecureLabDbContext db, CancellationToken ct) =>
         {
-            // ЛР 02: доповніть server validation, business rules та response contract.
+           
             var now = DateTimeOffset.UtcNow;
+            var errors = new Dictionary<string, string[]>();
+
+            
+            if (string.IsNullOrWhiteSpace(request.Title))
+                errors["title"] = ["Title обов'язковий."];
+            else if (request.Title.Length > 160)
+                errors["title"] = ["Title не довший за 160 символів."];
+
+            if (string.IsNullOrWhiteSpace(request.Description))
+                errors["description"] = ["Description обов'язковий."];
+            else if (request.Description.Length > 4000)
+                errors["description"] = ["Description не довший за 4000 символів."];
+
+           
+            var severityIsValid =
+                Enum.TryParse<IncidentSeverity>(request.Severity, ignoreCase: true, out var severity)
+                && Enum.IsDefined(severity);
+            if (!severityIsValid)
+                errors["severity"] = ["Допустимі значення: Low, Medium, High, Critical."];
+
+           
+            if (request.OccurredAtUtc is null)
+                errors["occurredAtUtc"] = ["occurredAtUtc обов'язковий."];
+            else if (request.OccurredAtUtc.Value > now.AddMinutes(5))
+                errors["occurredAtUtc"] = ["occurredAtUtc не може бути більш ніж на 5 хвилин у майбутньому."];
+            else if (request.OccurredAtUtc.Value < now.AddDays(-365))
+                errors["occurredAtUtc"] = ["occurredAtUtc не може бути раніше ніж 365 днів тому."];
+
+           
+            var title = request.Title?.Trim() ?? "";
+            var description = request.Description?.Trim() ?? "";
+
+            
+            if (severityIsValid
+                && (severity == IncidentSeverity.High || severity == IncidentSeverity.Critical)
+                && !errors.ContainsKey("description")
+                && description.Length < 40)
+                errors["description"] = ["Для High/Critical description має містити щонайменше 40 символів."];
+
+            
+            if (errors.Count > 0)
+                return Results.ValidationProblem(errors);
+
+            
+            var duplicate = await db.Incidents.AnyAsync(
+                item => item.Title == title && item.Status != IncidentStatus.Closed, ct);
+            if (duplicate)
+                return Results.Problem(
+                    statusCode: StatusCodes.Status409Conflict,
+                    title: "Інцидент уже існує",
+                    detail: "Незакритий інцидент із таким заголовком уже зареєстровано.");
+
+           
             var incident = new Incident
             {
-                Id = Guid.NewGuid(), OwnerUserId = DbSeeder.AliceId,
-                Title = request.Title ?? "", Description = request.Description ?? "",
-                Severity = Enum.TryParse<IncidentSeverity>(request.Severity, true, out var severity)
-                    ? severity : IncidentSeverity.Low,
-                Status = IncidentStatus.New, OccurredAtUtc = request.OccurredAtUtc ?? now,
-                CreatedAtUtc = now, UpdatedAtUtc = now
+                Id = Guid.NewGuid(),
+                OwnerUserId = DbSeeder.AliceId,
+                Title = title,
+                Description = description,
+                Severity = severity,
+                Status = IncidentStatus.New,
+                OccurredAtUtc = request.OccurredAtUtc!.Value.ToUniversalTime(),
+                CreatedAtUtc = now,
+                UpdatedAtUtc = now
             };
             db.Incidents.Add(incident);
             await db.SaveChangesAsync(ct);
-            return Results.Created($"/api/incidents/{incident.Id}", new { incident.Id, incident.Title });
+
+            var response = new CreatedIncidentResponse(
+                incident.Id, incident.Title, incident.Severity.ToString(), incident.Status.ToString(),
+                incident.OccurredAtUtc, incident.CreatedAtUtc, incident.UpdatedAtUtc);
+            return Results.Created($"/api/incidents/{incident.Id}", response);
         });
     }
 }
