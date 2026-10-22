@@ -108,3 +108,24 @@ POST {{baseUrl}}/api/incidents
 Content-Type: application/json
 
 { "title": "T10 ok", "description": "valid description", "severity": "Low", "occurredAtUtc": "2026-10-01T00:00:00Z" }
+
+### T-04 буквальний %
+GET {{baseUrl}}/api/incidents/search?q=%25
+
+### T-04 буквальний _
+GET {{baseUrl}}/api/incidents/search?q=_
+
+### Сортування (одразу після reset, до власних POST)
+GET {{baseUrl}}/api/incidents/search
+###
+GET {{baseUrl}}/api/incidents/search?sortBy=createdAtUtc
+###
+GET {{baseUrl}}/api/incidents/search?sortBy=severity
+###
+GET {{baseUrl}}/api/incidents/search?sortBy=status
+
+### T-05 невідомий sortBy -> 400, ключ sortBy
+GET {{baseUrl}}/api/incidents/search?sortBy=price
+
+### T-05b спроба ін'єкції через sortBy -> 400
+GET {{baseUrl}}/api/incidents/search?sortBy=title%3B%20select%201
