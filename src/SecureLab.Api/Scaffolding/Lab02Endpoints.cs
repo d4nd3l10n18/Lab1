@@ -11,13 +11,13 @@ public static class Lab02Endpoints
     {
         app.MapGet("/api/incidents/search", async (string? q, string? sortBy, SecureLabDbContext db, CancellationToken ct) =>
             {
-                // Значення q завжди лишається даними: параметр + буквальний підрядок.
+               
                 var pattern = "%" + EscapeLike(q ?? "") + "%";
                 var found = db.Incidents.AsNoTracking()
                     .Where(item => EF.Functions.ILike(item.Title, pattern, "\\")
                                 || EF.Functions.ILike(item.Description, pattern, "\\"));
 
-                // allowlist: клієнт лише обирає одну з гілок, написаних сервером.
+                
                 IOrderedQueryable<Incident>? ordered = sortBy switch
                 {
                     null or "" or "createdAtUtc" => found
@@ -128,6 +128,9 @@ public static class Lab02Endpoints
             return Results.Created($"/api/incidents/{incident.Id}", response);
         });
     }
+    
+    private static string EscapeLike(string value) =>
+        value.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
 }
 
 public sealed record CreateIncidentRequest(
@@ -136,3 +139,6 @@ public sealed record CreateIncidentRequest(
 public sealed record CreatedIncidentResponse(
     Guid Id, string Title, string Severity, string Status,
     DateTimeOffset OccurredAtUtc, DateTimeOffset CreatedAtUtc, DateTimeOffset UpdatedAtUtc);
+
+public sealed record IncidentSearchItem(
+    Guid Id, string Title, string Description, string Severity, string Status, DateTimeOffset CreatedAtUtc);
