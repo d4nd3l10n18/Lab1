@@ -117,11 +117,11 @@ GET {{baseUrl}}/api/incidents/search?q=_
 
 ### Сортування (одразу після reset, до власних POST)
 GET {{baseUrl}}/api/incidents/search
-###
+
 GET {{baseUrl}}/api/incidents/search?sortBy=createdAtUtc
-###
+
 GET {{baseUrl}}/api/incidents/search?sortBy=severity
-###
+
 GET {{baseUrl}}/api/incidents/search?sortBy=status
 
 ### T-05 невідомий sortBy -> 400, ключ sortBy
