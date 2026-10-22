@@ -4,6 +4,15 @@ GET {{baseUrl}}/api/incidents/search?q=навчальн
 ### Легітимний апостроф
 GET {{baseUrl}}/api/incidents/search?q=O%27Brien
 
+### Значення, якого немає
+GET {{baseUrl}}/api/incidents/search?q=zz-no-match
+
+### Контрольний ввід (read-only): zz-no-match' OR TRUE --
+GET {{baseUrl}}/api/incidents/search?q=zz-no-match%27%20OR%20TRUE%20--%20
+
+### Апостроф у кирилиці (сидовий запис)
+GET {{baseUrl}}/api/incidents/search?q=%D0%BA%D0%BE%D0%BC%D0%BF%27%D1%8E%D1%82%D0%B5%D1%80%D0%BD%D0%BE%D0%B3%D0%BE
+
 ### USB
 GET {{baseUrl}}/api/incidents/search?q=USB
 
