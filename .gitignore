@@ -26,3 +26,5 @@ infra/.env
 *.sql.gz
 *.log
 
+# Lab 2 : Evidence
+**/evidence-lab02/
