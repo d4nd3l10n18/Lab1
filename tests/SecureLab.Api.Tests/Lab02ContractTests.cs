@@ -9,12 +9,21 @@ using SecureLab.Api.Data.Entities;
 
 namespace SecureLab.Api.Tests;
 
-public sealed class Lab02ContractTests(SecureLabApiFactory factory) : IClassFixture<SecureLabApiFactory>
+public sealed class Lab02ContractTests(SecureLabApiFactory factory)
+    : IClassFixture<SecureLabApiFactory>, IAsyncLifetime
 {
-    private readonly HttpClient _client = factory.CreateClient();
+    private HttpClient _client = null!;
+
+    public async Task InitializeAsync() =>
+        _client = await factory.LoginAsync("alice", TestAuth.Password);
+
+    public Task DisposeAsync()
+    {
+        _client.Dispose();
+        return Task.CompletedTask;
+    }
 
     private static string NewTitle(string prefix) => $"{prefix}-{Guid.NewGuid():N}";
-
     private static StringContent Json(string json) =>
         new(json, Encoding.UTF8, "application/json");
 
