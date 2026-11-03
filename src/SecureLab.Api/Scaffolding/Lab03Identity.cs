@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Identity;
 using SecureLab.Api.Data;
 using SecureLab.Api.Data.Entities;
+using SecureLab.Api.Security;
 
 namespace SecureLab.Api.Scaffolding;
 
@@ -49,12 +50,12 @@ public static class Lab03Identity
 
             var user = new ApplicationUser
             {
-                Id = Guid.NewGuid(),
+                Id = Guid.NewGuid(),                       
                 UserName = input.UserName!.Trim(),
                 Email = input.Email!.Trim(),
                 DisplayName = input.DisplayName!.Trim()
             };
-            var result = await users.CreateAsync(user, input.Password!);
+            var result = await users.CreateAsync(user, input.Password!); 
             if (!result.Succeeded) return MapRegistrationFailure(result);
 
             var role = await users.AddToRoleAsync(user, DbSeeder.ReporterRole);
@@ -87,15 +88,15 @@ public static class Lab03Identity
             var user = await users.FindByNameAsync(input.UserName);
             LogAuthEvent(logger, "login", "success", http, user?.Id);
             return Results.NoContent();
-        });
+        }).RequireRateLimiting(LoginRateLimiting.PolicyName);
 
         app.MapPost("/api/auth/logout", async (SignInManager<ApplicationUser> signIn, HttpContext http,
             ILoggerFactory loggers) =>
         {
             var id = Guid.TryParse(http.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var g) ? g : (Guid?)null;
-            await signIn.SignOutAsync();                   
+            await signIn.SignOutAsync();
             LogAuthEvent(loggers.CreateLogger("SecureLab.Auth"), "logout", "success", http, id);
-            return Results.NoContent();
+            return Results.NoContent();           
         });
 
         app.MapGet("/api/me", GetCurrentUser).RequireAuthorization();

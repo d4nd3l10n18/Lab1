@@ -5,6 +5,7 @@ using Scalar.AspNetCore;
 using SecureLab.Api.Application.Incidents;
 using SecureLab.Api.Data;
 using SecureLab.Api.Presentation.Endpoints;
+using SecureLab.Api.Security; 
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
@@ -23,6 +24,7 @@ builder.Services.AddDbContext<SecureLabDbContext>(options =>
 builder.Services.AddScoped<IncidentQueries>();
 
 builder.AddLab03Identity();
+builder.AddLoginRateLimiting();
 
 var app = builder.Build();
 
@@ -62,6 +64,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
+
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
