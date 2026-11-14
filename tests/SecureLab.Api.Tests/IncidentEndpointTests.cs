@@ -7,12 +7,21 @@ using SecureLab.Api.Presentation.Contracts;
 namespace SecureLab.Api.Tests;
 
 public sealed class IncidentEndpointTests(SecureLabApiFactory factory)
-    : IClassFixture<SecureLabApiFactory>
+    : IClassFixture<SecureLabApiFactory>, IAsyncLifetime
 {
-    private readonly HttpClient _client = factory.CreateClient();
+    private HttpClient _client = null!;
+
+    public async Task InitializeAsync() =>
+        _client = await factory.LoginAsync("morgan", TestAuth.Password);
+
+    public Task DisposeAsync()
+    {
+        _client.Dispose();
+        return Task.CompletedTask;
+    }
 
     [Fact]
-    public async Task GetList_ReturnsSeededIncidents()
+    public async Task GetList_AsAnalyst_ReturnsAllSeededIncidents()
     {
         var incidents = await _client.GetFromJsonAsync<List<IncidentListItemResponse>>(
             "/api/incidents");

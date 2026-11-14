@@ -17,11 +17,15 @@ public sealed class IncidentQueries(SecureLabDbContext dbContext, ILogger<Incide
 
     public async Task<IReadOnlyList<IncidentListItemResponse>> GetListAsync(
         IncidentStatus? status,
+        Guid userId,
+        bool isAnalyst,
         CancellationToken cancellationToken)
     {
         logger.LogInformation("Loading incidents with status filter {Status}", status);
 
-        var query = dbContext.Incidents.AsNoTracking();
+        var query = dbContext.Incidents
+            .AsNoTracking()
+            .Where(incident => isAnalyst || incident.OwnerUserId == userId);
         if (status is not null)
         {
             query = query.Where(incident => incident.Status == status);
@@ -39,7 +43,28 @@ public sealed class IncidentQueries(SecureLabDbContext dbContext, ILogger<Incide
             .ToListAsync(cancellationToken);
     }
 
-    public Task<IncidentDetailsResponse?> GetDetailsAsync(Guid id, CancellationToken cancellationToken)
+    public Task<Incident?> FindAsync(Guid id, bool track, CancellationToken cancellationToken)
+    {
+        IQueryable<Incident> query = dbContext.Incidents;
+        if (!track)
+        {
+            query = query.AsNoTracking();
+        }
+
+        return query.SingleOrDefaultAsync(incident => incident.Id == id, cancellationToken);
+    }
+
+    public Task<IncidentComment?> FindCommentAsync(Guid id, CancellationToken cancellationToken) =>
+        dbContext.IncidentComments
+            .AsNoTracking()
+            .Include(comment => comment.Incident)
+            .Include(comment => comment.Author)
+            .SingleOrDefaultAsync(comment => comment.Id == id, cancellationToken);
+
+    public Task<IncidentDetailsResponse?> GetDetailsAsync(
+        Guid id,
+        bool includeInternalComments,
+        CancellationToken cancellationToken)
     {
         logger.LogInformation("Loading incident {IncidentId}", id);
 
@@ -56,7 +81,7 @@ public sealed class IncidentQueries(SecureLabDbContext dbContext, ILogger<Incide
                 incident.CreatedAtUtc,
                 incident.Owner.DisplayName,
                 incident.Comments
-                    .Where(comment => !comment.IsInternal)
+                    .Where(comment => includeInternalComments || !comment.IsInternal)
                     .OrderBy(comment => comment.CreatedAtUtc)
                     .Select(comment => new IncidentCommentResponse(
                         comment.Id,
@@ -69,9 +94,13 @@ public sealed class IncidentQueries(SecureLabDbContext dbContext, ILogger<Incide
 
     public async Task<IReadOnlyList<IncidentSeveritySummaryResponse>> GetSeveritySummaryAsync(
         IncidentStatus? status,
+        Guid userId,
+        bool isAnalyst,
         CancellationToken cancellationToken)
     {
-        var query = dbContext.Incidents.AsNoTracking();
+        var query = dbContext.Incidents
+            .AsNoTracking()
+            .Where(incident => isAnalyst || incident.OwnerUserId == userId);
         if (status is not null)
         {
             query = query.Where(incident => incident.Status == status);
@@ -84,7 +113,6 @@ public sealed class IncidentQueries(SecureLabDbContext dbContext, ILogger<Incide
 
         var countsBySeverity = groups.ToDictionary(item => item.Severity, item => item.Count);
 
-        // Політика: лише наявні групи, сталий порядок за критичністю.
         var summary = SeverityOrder
             .Where(countsBySeverity.ContainsKey)
             .Select(severity => new IncidentSeveritySummaryResponse(

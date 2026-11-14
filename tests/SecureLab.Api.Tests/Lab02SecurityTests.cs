@@ -5,9 +5,19 @@ using SecureLab.Api.Scaffolding;
 
 namespace SecureLab.Api.Tests;
 
-public sealed class Lab02SecurityTests(SecureLabApiFactory factory) : IClassFixture<SecureLabApiFactory>
+public sealed class Lab02SecurityTests(SecureLabApiFactory factory) 
+    : IClassFixture<SecureLabApiFactory>, IAsyncLifetime
 {
-    private readonly HttpClient _client = factory.CreateClient();
+    private HttpClient _client = null!;
+
+    public async Task InitializeAsync() =>
+        _client = await factory.LoginAsync("morgan", TestAuth.Password);
+
+    public Task DisposeAsync()
+    {
+        _client.Dispose();
+        return Task.CompletedTask;
+    }
 
     private static readonly Guid UsbId = Guid.Parse("20000000-0000-0000-0000-000000000005");
     private static readonly Guid ObrienId = Guid.Parse("20000000-0000-0000-0000-000000000004");

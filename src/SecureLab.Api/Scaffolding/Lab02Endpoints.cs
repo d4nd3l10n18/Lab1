@@ -10,11 +10,15 @@ public static class Lab02Endpoints
 {
     public static void MapLab02Endpoints(this WebApplication app)
     {
-        app.MapGet("/api/incidents/search", async (string? q, string? sortBy, SecureLabDbContext db, CancellationToken ct) =>
+    app.MapGet("/api/incidents/search", async (string? q, string? sortBy, HttpContext httpContext, SecureLabDbContext db, CancellationToken ct) =>
             {
-               
+                if (!Guid.TryParse(httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var userId))
+                    return Results.Challenge();
+                var isAnalyst = httpContext.User.IsInRole(DbSeeder.AnalystRole);
+
                 var pattern = "%" + EscapeLike(q ?? "") + "%";
                 var found = db.Incidents.AsNoTracking()
+                    .Where(item => isAnalyst || item.OwnerUserId == userId)
                     .Where(item => EF.Functions.ILike(item.Title, pattern, "\\")
                                 || EF.Functions.ILike(item.Description, pattern, "\\"));
 
@@ -50,7 +54,7 @@ public static class Lab02Endpoints
                         item.Severity.ToString(), item.Status.ToString(), item.CreatedAtUtc))
                     .ToListAsync(ct);
                 return Results.Ok(items);
-            });
+            }).RequireAuthorization();
         app.MapPost("/api/incidents", async (CreateIncidentRequest request, HttpContext httpContext, SecureLabDbContext db, CancellationToken ct) =>
         {
 
