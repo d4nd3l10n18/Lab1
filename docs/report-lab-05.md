@@ -4,7 +4,7 @@
 
 ## Для всіх рівнів
 
-**DEL-01.** Карта потоку: `docs/source-to-sink.md`. Докази, finding, REG-XSS-01 та REG-CORS-01: `docs/browser-security-evidence.md`. Додатково сирі файли `docs/evidence-lab05/` (у Git ігноруються, передано в Moodle).
+**DEL-01.** Карта потоку: `docs/source-to-sink.md`. Докази, finding, REG-XSS-01 та REG-CORS-01: `docs/browser-security-evidence.md`. Додатково сирі файли `docs/evidence-lab05/`
 
 | До | Першопричина | Fix | Retest | Залишковий ризик |
 |---|---|---|---|---|
@@ -18,11 +18,7 @@
 - SEED (marker у коментарі): `fa9bfd1e84c88acb9dcc2b7863c150760891bb4d`.
 - FIXED_XSS: `d68e3016d058e9e19a672165924e553857f02333`.
 - CORS: `dedd9bf9846185210bba25feed9fc4caa79b36f6`; CSP report-only: `b4fd2f92ceaeb73b6136f0c2eb0bedb5b0520877`; CSP enforcement: `f2432ed8aa7cba073a21fd1998c49e544de8aa6e`.
-- FIXED (кінцевий) і `v0.5.0`: ⟨hash⟩.
-- Передавання: ⟨приватний remote `https://github.com/d4nd3l10n18/Lab1`, гілки `lab/5-browser-xss`, `main`, тег `v0.5.0` / `lab05.bundle`⟩.
-- Підтвердження: ⟨вивід `git show --no-patch v0.5.0`, `git bundle list-heads lab05.bundle`⟩.
-
-Гілка `main` створена на кінцевому fixed commit, бо `master` у цьому репозиторії розійшовся з історією ЛР 2–4 і fast-forward у нього неможливий.
+- FIXED `d68e3016d058e9e19a672165924e553857f02333` і `v0.5.0`: ⟨hash⟩.
 
 **DEL-03.** Відповіді на контрольні питання в кінці звіту.
 
