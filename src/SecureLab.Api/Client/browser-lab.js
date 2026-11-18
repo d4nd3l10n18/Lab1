@@ -1,23 +1,31 @@
 let current;
-const id = () => encodeURIComponent(document.querySelector("#incident-id").value.trim());
-const status = document.querySelector("#status");
+const $ = selector => document.querySelector(selector);
+const id = () => encodeURIComponent($("#incident-id").value.trim());
+const status = $("#status");
+
+function renderText(element, value) {
+  element.replaceChildren(document.createTextNode(value ?? ""));
+}
+
 async function load() {
   const response = await fetch(`/api/incidents/${id()}`);
   status.textContent = `GET: ${response.status}`;
   if (!response.ok) return;
   current = await response.json();
-  document.querySelector("#title").textContent = current.title;
-  document.querySelector("#description").innerHTML = current.description;
-  document.querySelector("#comments").replaceChildren();
+  $("#title").textContent = current.title;
+  renderText($("#description"), current.description);
+
+  const comments = $("#comments");
+  comments.replaceChildren();
   for (const comment of current.comments ?? []) {
     const paragraph = document.createElement("p");
-    paragraph.innerHTML = comment.text;
-    document.querySelector("#comments").append(paragraph);
+    renderText(paragraph, comment.text);
+    comments.append(paragraph);
   }
-  document.querySelector("#edit").elements.description.value = current.description;
+  $("#edit").elements.description.value = current.description;
 }
-document.querySelector("#load").addEventListener("click", load);
-document.querySelector("#edit").addEventListener("submit", async event => {
+$("#load").addEventListener("click", load);
+$("#edit").addEventListener("submit", async event => {
   event.preventDefault();
   const response = await fetch("/api/incidents", { method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title: event.currentTarget.elements.title.value, description: event.currentTarget.elements.description.value,
@@ -25,7 +33,7 @@ document.querySelector("#edit").addEventListener("submit", async event => {
   status.textContent = `POST: ${response.status}`;
   if (response.ok) {
     const created = await response.json();
-    document.querySelector("#incident-id").value = created.id;
+    $("#incident-id").value = created.id;
     await load();
   }
 });
