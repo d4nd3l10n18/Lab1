@@ -283,6 +283,9 @@ public sealed class Lab04AuthorizationTests(SecureLabApiFactory factory) : IClas
             {
                 Assert.Equal(HttpStatusCode.NoContent, login.StatusCode);
             }
+            // This legacy test builds its HttpClient manually, so supply the
+            // framework antiforgery pair before its valid create/triage requests.
+            alice.DefaultRequestHeaders.Add("X-SecureLab-CSRF", await alice.GetCsrfTokenAsync());
 
             var id = await CreateAsync(alice, title);
             using var response = await alice.PostAsync($"/api/incidents/{id}/triage", content: null);
