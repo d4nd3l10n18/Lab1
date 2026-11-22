@@ -91,4 +91,3 @@ UPDATE "AuditIntegrityEvents" SET "Outcome"='tampered' WHERE "SequenceNumber"=1;
 - Business mutation і audit event записуються в одній транзакції PostgreSQL, anchor оновлюється після commit. Збій між commit та anchor створює fail-closed стан, який потребує ручного дослідження/відновлення.
 - Захист не покриває компрометацію самого застосунку/HMAC ключа, захоплення OS-акаунта, що контролює anchor, чи недовірену репліку; виробниче сховище ключів і backup-політика — окреме завдання.
 - Початкові `SecureLab.Audit` логи авторизаційних відмов залишаються без змін.
-- **Не перевірено збіркою/запуском тут:** у середовищі створення патча немає .NET CLI. `git apply --check` на вихідній версії після CSRF-only пройшов. Перевірте `dotnet build`, `dotnet test` та runtime на вашому стенді. Сценарії автоматизованих тестів для HMAC треба додати в `SecureLab.Api.Tests`; цей патч містить реалізацію й CLI verifier, а не готовий повний інтеграційний test pack.
