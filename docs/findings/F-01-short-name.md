@@ -1,44 +1,30 @@
-# F-01. Коротка назва
+# F-01 — CSRF validation була відсутня на cookie-authenticated mutation routes
 
-**Статус:** Fixed / Temporarily accepted  
-**Актив:** ...  
-**Компонент:** ...  
-**Пріоритет:** P1 / P2 / P3
+**Статус:** Code fix present; final retest pending
+**Актив:** Incident та identity session
+**Компонент:** `Program.cs`, `IncidentEndpoints.cs`, `Lab02Endpoints.cs`, `Lab03Identity.cs`, `CsrfValidation.cs`
+**Пріоритет:** P1 за умов доступного browser mutation з cookie. Це обґрунтована пріоритетність, а не CVSS score.
 
 ## Передумови і межі огляду
 
-Commit, local environment, test account, reset command, endpoint/route та виключення.
+Локальний SecureLab, Development, seed principal Alice, валідна cookie сесія. У стані ЛР5 antiforgery service/validation не були реалізовані (це прямо зазначено у методичці ЛР6). Фактичний pre-fix commit hash і HTTP trace потрібно відновити з Git/evidence, не вигадувати.
 
-## Відтворення
+## Відтворення (до fix)
 
-Нумеровані безпечні local-only кроки, expected та actual result.
+Локально залогінити Alice, зробити browser-accessible PUT до власного Incident без request token; перевірити server side state mutation та статус. Якщо pre-fix state не збережено в Git, залишити «historical observation unavailable», не стверджувати про підтверджений exploit.
 
-## Вплив і ймовірність
+## Вплив та першопричина
 
-**Статус перевірки:** спостережено локально / оцінено за кодом і конфігурацією / не перевірено, з причиною.
-
-Що може статися з asset; за яких умов сценарій доступний. Не вигадуйте CVSS score.
-
-## Першопричина
-
-Точний code/configuration decision, а не лише назва payload або symptom.
+Authentication cookie надсилається браузером автоматично; CORS і SameSite не забезпечують повного CSRF захисту. Відсутній explicit `IAntiforgery.ValidateRequestAsync` для JSON/DELETE minimal APIs.
 
 ## Виправлення
 
-Що змінено, чому це усуває причину; fixed commit або precise diff reference.
+`AddAntiforgery` із заголовком `X-SecureLab-CSRF`, автентифікований `GET /api/auth/csrf-token`, `CsrfValidation` endpoint filter на logout/create/update/delete/triage; легітимний браузерний helper додає token. За потреби вказати фактичний Git commit.
 
-## Retest
+## Retest / Positive regression
 
-Повторення початкового негативного сценарію після fix із фактичним результатом.
-
-## Positive regression
-
-Легітимний сценарій, який має лишитися робочим.
+`REG-CSRF-01`: cookie є + PUT без token → 400 + незмінний Incident; cookie + валідна пара → 204 + змінений Incident. Додаткові `REG-CSRF-02/03` на invalid/mismatched token. **Actual:** NOT RUN у пакеті; внести місцевий sanitized output і verified HEAD.
 
 ## Залишковий ризик
 
-Що control не покриває, що не тестувалося або яка умова лишається.
-
-## Доказ
-
-Sanitized test ID/trace, observation і точний command. Без password, cookie, token, secret або зайвих персональних даних.
+XSS на trusted origin може читати request token. Login/register потребують окремого threat decision. Browser consistency потрібно перевірити вручну.
