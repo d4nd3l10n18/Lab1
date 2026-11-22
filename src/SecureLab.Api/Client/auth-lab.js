@@ -1,3 +1,4 @@
+import { clearCsrfToken } from "./csrf.js";
 import { apiFetch } from "./api-fetch.js";
 
 const $ = selector => document.querySelector(selector);
@@ -71,7 +72,7 @@ $("#login").addEventListener("submit", async event => {
   form.elements.password.value = "";
   try {
     const response = await postJson("/api/auth/login", dto);
-    if (response.status === 204) { result.textContent = "Вхід виконано."; await loadProfile(); }
+    if (response.status === 204) { clearCsrfToken(); result.textContent = "Вхід виконано."; await loadProfile(); }
     else if (response.status === 429) result.textContent = "Забагато спроб входу. Зачекайте.";
     else result.textContent = "Невдалий вхід.";
   } catch { result.textContent = "Помилка мережі."; }
@@ -100,6 +101,7 @@ $("#incident").addEventListener("submit", async event => {
 
 $("#logout").addEventListener("click", async () => {
   try { await apiFetch("/api/auth/logout", { method: "POST" }); } catch { /* перевіримо нижче */ }
+  clearCsrfToken();
   clearProfile();
   result.textContent = "";
   $("#incident").reset();

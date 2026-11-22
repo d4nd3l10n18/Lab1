@@ -1,7 +1,9 @@
+using SecureLab.Api.Security;
 using Microsoft.EntityFrameworkCore;
 using SecureLab.Api.Data;
 using SecureLab.Api.Data.Entities;
 using System.Security.Claims;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace SecureLab.Api.Scaffolding;
 
@@ -54,7 +56,8 @@ public static class Lab02Endpoints
                         item.Severity.ToString(), item.Status.ToString(), item.CreatedAtUtc))
                     .ToListAsync(ct);
                 return Results.Ok(items);
-            }).RequireAuthorization();
+            }).RequireAuthorization()
+              .RequireRateLimiting("incident-search"); 
         app.MapPost("/api/incidents", async (CreateIncidentRequest request, HttpContext httpContext, SecureLabDbContext db, CancellationToken ct) =>
         {
 
@@ -134,7 +137,7 @@ public static class Lab02Endpoints
                 incident.Id, incident.Title, incident.Severity.ToString(), incident.Status.ToString(),
                 incident.OccurredAtUtc, incident.CreatedAtUtc, incident.UpdatedAtUtc);
                 return Results.Created($"/api/incidents/{incident.Id}", response);
-        }).RequireAuthorization();
+        }).RequireAuthorization().AddEndpointFilter<CsrfValidation>();
     }
     
     private static string EscapeLike(string value) =>

@@ -1,10 +1,10 @@
+using SecureLab.Api.Security;
 using System.Net.Mail;
 using System.Security.Claims;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Identity;
 using SecureLab.Api.Data;
 using SecureLab.Api.Data.Entities;
-using SecureLab.Api.Security;
 
 namespace SecureLab.Api.Scaffolding;
 
@@ -97,7 +97,7 @@ public static class Lab03Identity
             await signIn.SignOutAsync();
             LogAuthEvent(loggers.CreateLogger("SecureLab.Auth"), "logout", "success", http, id);
             return Results.NoContent();           
-        });
+        }).RequireAuthorization().AddEndpointFilter<CsrfValidation>();
 
         app.MapGet("/api/me", GetCurrentUser).RequireAuthorization();
 

@@ -1,3 +1,4 @@
+import { csrfHeaders } from "./csrf.js";
 let current;
 const $ = selector => document.querySelector(selector);
 const id = () => encodeURIComponent($("#incident-id").value.trim());
@@ -27,7 +28,7 @@ async function load() {
 $("#load").addEventListener("click", load);
 $("#edit").addEventListener("submit", async event => {
   event.preventDefault();
-  const response = await fetch("/api/incidents", { method: "POST", headers: { "Content-Type": "application/json" },
+  const response = await fetch("/api/incidents", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json", ...await csrfHeaders() },
     body: JSON.stringify({ title: event.currentTarget.elements.title.value, description: event.currentTarget.elements.description.value,
       severity: "Low", occurredAtUtc: new Date().toISOString() }) });
   status.textContent = `POST: ${response.status}`;

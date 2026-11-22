@@ -6,6 +6,7 @@ using SecureLab.Api.Application.Incidents;
 using SecureLab.Api.Data;
 using SecureLab.Api.Data.Entities;
 using SecureLab.Api.Presentation.Contracts;
+using SecureLab.Api.Security;
 
 namespace SecureLab.Api.Presentation.Endpoints;
 
@@ -30,15 +31,15 @@ public static class IncidentEndpoints
             .Produces<IncidentDetailsResponse>()
             .ProducesProblem(StatusCodes.Status404NotFound);
 
-        group.MapPut("/{id:guid}", UpdateAsync)
+        group.MapPut("/{id:guid}", UpdateAsync).AddEndpointFilter<CsrfValidation>()
             .WithName("UpdateIncident")
             .ProducesProblem(StatusCodes.Status404NotFound);
 
-        group.MapDelete("/{id:guid}", DeleteAsync)
+        group.MapDelete("/{id:guid}", DeleteAsync).AddEndpointFilter<CsrfValidation>()
             .WithName("DeleteIncident")
             .ProducesProblem(StatusCodes.Status404NotFound);
 
-        group.MapPost("/{id:guid}/triage", TriageAsync)
+        group.MapPost("/{id:guid}/triage", TriageAsync).AddEndpointFilter<CsrfValidation>()
             .WithName("TriageIncident")
             .ProducesProblem(StatusCodes.Status404NotFound);
 
