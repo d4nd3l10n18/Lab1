@@ -6,7 +6,8 @@ using Scalar.AspNetCore;
 using SecureLab.Api.Application.Incidents;
 using SecureLab.Api.Data;
 using SecureLab.Api.Presentation.Endpoints;
-using SecureLab.Api.Security; 
+using SecureLab.Api.Security;
+using Microsoft.AspNetCore.Antiforgery;
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
@@ -23,6 +24,15 @@ var connectionString = builder.Configuration.GetConnectionString("SecureLab")
 builder.Services.AddDbContext<SecureLabDbContext>(options =>
     options.UseNpgsql(connectionString));
 builder.Services.AddScoped<IncidentQueries>();
+builder.Services.AddAntiforgery(options =>
+{
+    options.HeaderName = "X-SecureLab-CSRF";
+    options.Cookie.Name = "securelab-af";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Strict;
+    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+        ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
+});
 
 builder.Services.AddSingleton<IAuthorizationHandler, IncidentAuthorizationHandler>();
 
@@ -101,6 +111,12 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
 
+
+app.MapGet("/api/auth/csrf-token", (IAntiforgery antiforgery, HttpContext http) =>
+{
+    http.Response.Headers.CacheControl = "no-store";
+    return Results.Ok(new { token = antiforgery.GetAndStoreTokens(http).RequestToken });
+}).RequireAuthorization();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
