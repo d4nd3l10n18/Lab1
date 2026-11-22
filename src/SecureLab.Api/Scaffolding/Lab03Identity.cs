@@ -66,7 +66,8 @@ public static class Lab03Identity
 
 
         app.MapPost("/api/auth/login", async (LoginInput input, SignInManager<ApplicationUser> signIn,
-            UserManager<ApplicationUser> users, HttpContext http, ILoggerFactory loggers) =>
+            UserManager<ApplicationUser> users, HttpContext http, ILoggerFactory loggers,
+            AuditIntegrity audit) =>
         {
             var logger = loggers.CreateLogger("SecureLab.Auth");
 
@@ -75,6 +76,7 @@ public static class Lab03Identity
                 || input.UserName.Length > 256 || input.Password.Length > 128)
             {
                 LogAuthEvent(logger, "login", "failure", http);
+                await audit.AppendAsync(AuditIntegrity.Describe(http, "auth.login", null, "denied"));
                 return Results.Unauthorized();
             }
 
@@ -82,18 +84,25 @@ public static class Lab03Identity
             if (!result.Succeeded)
             {
                 LogAuthEvent(logger, "login", "failure", http);
+                await audit.AppendAsync(AuditIntegrity.Describe(http, "auth.login", null, "denied"));
                 return Results.Unauthorized();
             }
 
             var user = await users.FindByNameAsync(input.UserName);
             LogAuthEvent(logger, "login", "success", http, user?.Id);
+            var auditEvent = AuditIntegrity.Describe(http, "auth.login", null, "success");
+            auditEvent.ActorUserId = user?.Id;
+            await audit.AppendAsync(auditEvent);
             return Results.NoContent();
         }).RequireRateLimiting(LoginRateLimiting.PolicyName);
 
         app.MapPost("/api/auth/logout", async (SignInManager<ApplicationUser> signIn, HttpContext http,
-            ILoggerFactory loggers) =>
+            ILoggerFactory loggers, AuditIntegrity audit) =>
         {
             var id = Guid.TryParse(http.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var g) ? g : (Guid?)null;
+            var auditEvent = AuditIntegrity.Describe(http, "auth.logout", null, "success");
+            auditEvent.ActorUserId = id;
+            await audit.AppendAsync(auditEvent);
             await signIn.SignOutAsync();
             LogAuthEvent(loggers.CreateLogger("SecureLab.Auth"), "logout", "success", http, id);
             return Results.NoContent();           

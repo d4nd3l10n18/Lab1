@@ -1,0 +1,481 @@
+diff --git a/src/SecureLab.Api/Data/Entities/AuditIntegrityEvent.cs b/src/SecureLab.Api/Data/Entities/AuditIntegrityEvent.cs
+new file mode 100644
+--- /dev/null
++++ b/src/SecureLab.Api/Data/Entities/AuditIntegrityEvent.cs
+@@ -0,0 +1,15 @@
++namespace SecureLab.Api.Data.Entities;
++public sealed class AuditIntegrityEvent
++{
++    public long SequenceNumber { get; set; }
++    public DateTimeOffset TimestampUtc { get; set; }
++    public string EventType { get; set; } = "";
++    public Guid? ActorUserId { get; set; }
++    public string EntityType { get; set; } = "";
++    public string? EntityId { get; set; }
++    public string Action { get; set; } = "";
++    public string Outcome { get; set; } = "";
++    public string TraceId { get; set; } = "";
++    public string PreviousHmac { get; set; } = "";
++    public string CurrentHmac { get; set; } = "";
++}
+diff --git a/src/SecureLab.Api/Data/Migrations/20261122180000_AuditIntegrityEvents.cs b/src/SecureLab.Api/Data/Migrations/20261122180000_AuditIntegrityEvents.cs
+new file mode 100644
+--- /dev/null
++++ b/src/SecureLab.Api/Data/Migrations/20261122180000_AuditIntegrityEvents.cs
+@@ -0,0 +1,31 @@
++using System;
++using Microsoft.EntityFrameworkCore.Infrastructure;
++using Microsoft.EntityFrameworkCore.Migrations;
++using SecureLab.Api.Data;
++#nullable disable
++namespace SecureLab.Api.Data.Migrations;
++[DbContext(typeof(SecureLabDbContext))]
++[Migration("20261122180000_AuditIntegrityEvents")]
++public partial class AuditIntegrityEvents : Migration
++{
++    protected override void Up(MigrationBuilder migrationBuilder)
++    {
++        migrationBuilder.CreateTable(
++            name: "AuditIntegrityEvents",
++            columns: table => new
++            {
++                SequenceNumber = table.Column<long>(type: "bigint", nullable: false),
++                TimestampUtc = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
++                EventType = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
++                ActorUserId = table.Column<Guid>(type: "uuid", nullable: true),
++                EntityType = table.Column<string>(type: "character varying(40)", maxLength: 40, nullable: false),
++                EntityId = table.Column<string>(type: "character varying(80)", maxLength: 80, nullable: true),
++                Action = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
++                Outcome = table.Column<string>(type: "character varying(24)", maxLength: 24, nullable: false),
++                TraceId = table.Column<string>(type: "character varying(160)", maxLength: 160, nullable: false),
++                PreviousHmac = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
++                CurrentHmac = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false)
++            }, constraints: table => table.PrimaryKey("PK_AuditIntegrityEvents", x => x.SequenceNumber));
++    }
++    protected override void Down(MigrationBuilder migrationBuilder) => migrationBuilder.DropTable("AuditIntegrityEvents");
++}
+diff --git a/src/SecureLab.Api/Data/Migrations/SecureLabDbContextModelSnapshot.cs b/src/SecureLab.Api/Data/Migrations/SecureLabDbContextModelSnapshot.cs
+--- a/src/SecureLab.Api/Data/Migrations/SecureLabDbContextModelSnapshot.cs
++++ b/src/SecureLab.Api/Data/Migrations/SecureLabDbContextModelSnapshot.cs
+@@ -22,6 +22,23 @@
+ 
+             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+ 
++            modelBuilder.Entity("SecureLab.Api.Data.Entities.AuditIntegrityEvent", b =>
++                {
++                    b.Property<long>("SequenceNumber").ValueGeneratedNever().HasColumnType("bigint");
++                    b.Property<DateTimeOffset>("TimestampUtc").HasColumnType("timestamp with time zone");
++                    b.Property<string>("EventType").IsRequired().HasMaxLength(64).HasColumnType("character varying(64)");
++                    b.Property<Guid?>("ActorUserId").HasColumnType("uuid");
++                    b.Property<string>("EntityType").IsRequired().HasMaxLength(40).HasColumnType("character varying(40)");
++                    b.Property<string>("EntityId").HasMaxLength(80).HasColumnType("character varying(80)");
++                    b.Property<string>("Action").IsRequired().HasMaxLength(100).HasColumnType("character varying(100)");
++                    b.Property<string>("Outcome").IsRequired().HasMaxLength(24).HasColumnType("character varying(24)");
++                    b.Property<string>("TraceId").IsRequired().HasMaxLength(160).HasColumnType("character varying(160)");
++                    b.Property<string>("PreviousHmac").IsRequired().HasMaxLength(64).HasColumnType("character varying(64)");
++                    b.Property<string>("CurrentHmac").IsRequired().HasMaxLength(64).HasColumnType("character varying(64)");
++                    b.HasKey("SequenceNumber");
++                    b.ToTable("AuditIntegrityEvents", (string)null);
++                });
++
+             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", b =>
+                 {
+                     b.Property<Guid>("Id")
+diff --git a/src/SecureLab.Api/Data/SecureLabDbContext.cs b/src/SecureLab.Api/Data/SecureLabDbContext.cs
+--- a/src/SecureLab.Api/Data/SecureLabDbContext.cs
++++ b/src/SecureLab.Api/Data/SecureLabDbContext.cs
+@@ -8,6 +8,7 @@
+ public sealed class SecureLabDbContext(DbContextOptions<SecureLabDbContext> options)
+     : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>(options)
+ {
++    public DbSet<AuditIntegrityEvent> AuditIntegrityEvents => Set<AuditIntegrityEvent>();
+     public DbSet<Incident> Incidents => Set<Incident>();
+     public DbSet<IncidentComment> IncidentComments => Set<IncidentComment>();
+     public DbSet<IncidentStatusHistory> IncidentStatusHistory => Set<IncidentStatusHistory>();
+@@ -27,6 +28,19 @@
+         modelBuilder.Entity<IdentityUserLogin<Guid>>().ToTable("identity_user_logins");
+         modelBuilder.Entity<IdentityRoleClaim<Guid>>().ToTable("identity_role_claims");
+         modelBuilder.Entity<IdentityUserToken<Guid>>().ToTable("identity_user_tokens");
++
++        var audit = modelBuilder.Entity<AuditIntegrityEvent>();
++        audit.ToTable("AuditIntegrityEvents");
++        audit.HasKey(x => x.SequenceNumber);
++        audit.Property(x => x.SequenceNumber).ValueGeneratedNever();
++        audit.Property(x => x.EventType).HasMaxLength(64).IsRequired();
++        audit.Property(x => x.EntityType).HasMaxLength(40).IsRequired();
++        audit.Property(x => x.EntityId).HasMaxLength(80);
++        audit.Property(x => x.Action).HasMaxLength(100).IsRequired();
++        audit.Property(x => x.Outcome).HasMaxLength(24).IsRequired();
++        audit.Property(x => x.TraceId).HasMaxLength(160).IsRequired();
++        audit.Property(x => x.PreviousHmac).HasMaxLength(64).IsRequired();
++        audit.Property(x => x.CurrentHmac).HasMaxLength(64).IsRequired();
+ 
+         var incident = modelBuilder.Entity<Incident>();
+         incident.ToTable("incidents");
+diff --git a/src/SecureLab.Api/Presentation/Endpoints/IncidentEndpoints.cs b/src/SecureLab.Api/Presentation/Endpoints/IncidentEndpoints.cs
+--- a/src/SecureLab.Api/Presentation/Endpoints/IncidentEndpoints.cs
++++ b/src/SecureLab.Api/Presentation/Endpoints/IncidentEndpoints.cs
+@@ -6,6 +6,7 @@
+ using SecureLab.Api.Data;
+ using SecureLab.Api.Data.Entities;
+ using SecureLab.Api.Presentation.Contracts;
++using SecureLab.Api.Security;
+ using SecureLab.Api.Security;
+ 
+ namespace SecureLab.Api.Presentation.Endpoints;
+@@ -204,6 +205,7 @@
+         IAuthorizationService authorizationService,
+         IncidentQueries queries,
+         SecureLabDbContext dbContext,
++        AuditIntegrity audit,
+         CancellationToken cancellationToken)
+     {
+         var incident = await queries.FindAsync(id, track: true, cancellationToken);
+@@ -219,6 +221,7 @@
+ 
+         if (!await IsAllowedAsync(authorizationService, httpContext, incident, IncidentOperations.Update))
+         {
++            await audit.AppendAsync(AuditIntegrity.Describe(httpContext, "incident.update", id, "denied"), cancellationToken);
+             return Results.Forbid();
+         }
+ 
+@@ -231,7 +234,9 @@
+         incident.Title = request.Title!.Trim();
+         incident.Description = request.Description!.Trim();
+         incident.UpdatedAtUtc = DateTimeOffset.UtcNow;
+-        await dbContext.SaveChangesAsync(cancellationToken);
++        await audit.ExecuteAsync(
++            AuditIntegrity.Describe(httpContext, "incident.update", id, "success"),
++            () => dbContext.SaveChangesAsync(cancellationToken), cancellationToken);
+         return Results.NoContent();
+     }
+ 
+@@ -242,6 +247,7 @@
+         IAuthorizationService authorizationService,
+         IncidentQueries queries,
+         SecureLabDbContext dbContext,
++        AuditIntegrity audit,
+         CancellationToken cancellationToken)
+     {
+         var incident = await queries.FindAsync(id, track: true, cancellationToken);
+@@ -257,11 +263,14 @@
+ 
+         if (!await IsAllowedAsync(authorizationService, httpContext, incident, IncidentOperations.Delete))
+         {
++            await audit.AppendAsync(AuditIntegrity.Describe(httpContext, "incident.delete", id, "denied"), cancellationToken);
+             return Results.Forbid();
+         }
+ 
+         dbContext.Incidents.Remove(incident);
+-        await dbContext.SaveChangesAsync(cancellationToken);
++        await audit.ExecuteAsync(
++            AuditIntegrity.Describe(httpContext, "incident.delete", id, "success"),
++            () => dbContext.SaveChangesAsync(cancellationToken), cancellationToken);
+         return Results.NoContent();
+     }
+ 
+@@ -273,6 +282,7 @@
+         IncidentQueries queries,
+         SecureLabDbContext dbContext,
+         ILoggerFactory loggerFactory,
++        AuditIntegrity audit,
+         CancellationToken cancellationToken)
+     {
+         var incident = await queries.FindAsync(id, track: true, cancellationToken);
+@@ -284,12 +294,14 @@
+         if (!await IsAllowedAsync(authorizationService, httpContext, incident, IncidentOperations.Read))
+         {
+             LogDenied(loggerFactory, httpContext, "incident.triage", incident.Id);
++            await audit.AppendAsync(AuditIntegrity.Describe(httpContext, "incident.triage", id, "denied"), cancellationToken);
+             return IncidentNotFound();
+         }
+ 
+         if (!await IsAllowedAsync(authorizationService, httpContext, incident, IncidentOperations.Triage))
+         {
+             LogDenied(loggerFactory, httpContext, "incident.triage", incident.Id);
++            await audit.AppendAsync(AuditIntegrity.Describe(httpContext, "incident.triage", id, "denied"), cancellationToken);
+             return Results.Forbid();
+         }
+ 
+@@ -320,7 +332,9 @@
+             Note = "Triage через API.",
+             CreatedAtUtc = now
+         });
+-        await dbContext.SaveChangesAsync(cancellationToken);
++        await audit.ExecuteAsync(
++            AuditIntegrity.Describe(httpContext, "incident.triage", id, "success"),
++            () => dbContext.SaveChangesAsync(cancellationToken), cancellationToken);
+         return Results.NoContent();
+     }
+ 
+diff --git a/src/SecureLab.Api/Program.cs b/src/SecureLab.Api/Program.cs
+--- a/src/SecureLab.Api/Program.cs
++++ b/src/SecureLab.Api/Program.cs
+@@ -24,6 +24,7 @@
+ builder.Services.AddDbContext<SecureLabDbContext>(options =>
+     options.UseNpgsql(connectionString));
+ builder.Services.AddScoped<IncidentQueries>();
++builder.Services.AddScoped<AuditIntegrity>();
+ builder.Services.AddAntiforgery(options =>
+ {
+     options.HeaderName = "X-SecureLab-CSRF";
+@@ -60,6 +61,25 @@
+ 
+ if (resetRequested)
+ {
++    return;
++}
++
++// Local-only integrity CLI: no public verification endpoint.
++if (args.Contains("--audit-init", StringComparer.Ordinal)
++    || args.Contains("--audit-verify", StringComparer.Ordinal))
++{
++    await using var scope = app.Services.CreateAsyncScope();
++    var audit = scope.ServiceProvider.GetRequiredService<AuditIntegrity>();
++    if (args.Contains("--audit-init", StringComparer.Ordinal))
++    {
++        await audit.InitializeEmptyAsync();
++        Console.WriteLine("AUDIT INITIALIZED");
++    }
++    else
++    {
++        var result = await audit.VerifyAsync();
++        Console.WriteLine($"AUDIT OK count={result.Count}, last_sequence={result.LastSequence}");
++    }
+     return;
+ }
+ 
+diff --git a/src/SecureLab.Api/Scaffolding/Lab03Identity.cs b/src/SecureLab.Api/Scaffolding/Lab03Identity.cs
+--- a/src/SecureLab.Api/Scaffolding/Lab03Identity.cs
++++ b/src/SecureLab.Api/Scaffolding/Lab03Identity.cs
+@@ -67,7 +67,8 @@
+ 
+ 
+         app.MapPost("/api/auth/login", async (LoginInput input, SignInManager<ApplicationUser> signIn,
+-            UserManager<ApplicationUser> users, HttpContext http, ILoggerFactory loggers) =>
++            UserManager<ApplicationUser> users, HttpContext http, ILoggerFactory loggers,
++            AuditIntegrity audit) =>
+         {
+             var logger = loggers.CreateLogger("SecureLab.Auth");
+ 
+@@ -76,6 +77,7 @@
+                 || input.UserName.Length > 256 || input.Password.Length > 128)
+             {
+                 LogAuthEvent(logger, "login", "failure", http);
++                await audit.AppendAsync(AuditIntegrity.Describe(http, "auth.login", null, "denied"));
+                 return Results.Unauthorized();
+             }
+ 
+@@ -83,18 +85,25 @@
+             if (!result.Succeeded)
+             {
+                 LogAuthEvent(logger, "login", "failure", http);
++                await audit.AppendAsync(AuditIntegrity.Describe(http, "auth.login", null, "denied"));
+                 return Results.Unauthorized();
+             }
+ 
+             var user = await users.FindByNameAsync(input.UserName);
+             LogAuthEvent(logger, "login", "success", http, user?.Id);
++            var auditEvent = AuditIntegrity.Describe(http, "auth.login", null, "success");
++            auditEvent.ActorUserId = user?.Id;
++            await audit.AppendAsync(auditEvent);
+             return Results.NoContent();
+         }).RequireRateLimiting(LoginRateLimiting.PolicyName);
+ 
+         app.MapPost("/api/auth/logout", async (SignInManager<ApplicationUser> signIn, HttpContext http,
+-            ILoggerFactory loggers) =>
++            ILoggerFactory loggers, AuditIntegrity audit) =>
+         {
+             var id = Guid.TryParse(http.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var g) ? g : (Guid?)null;
++            var auditEvent = AuditIntegrity.Describe(http, "auth.logout", null, "success");
++            auditEvent.ActorUserId = id;
++            await audit.AppendAsync(auditEvent);
+             await signIn.SignOutAsync();
+             LogAuthEvent(loggers.CreateLogger("SecureLab.Auth"), "logout", "success", http, id);
+             return Results.NoContent();           
+diff --git a/src/SecureLab.Api/Security/AuditIntegrity.cs b/src/SecureLab.Api/Security/AuditIntegrity.cs
+new file mode 100644
+--- /dev/null
++++ b/src/SecureLab.Api/Security/AuditIntegrity.cs
+@@ -0,0 +1,181 @@
++using System.Globalization;
++using System.Security.Claims;
++using System.Security.Cryptography;
++using System.Text;
++using System.Text.Json;
++using Microsoft.EntityFrameworkCore;
++using SecureLab.Api.Data;
++using SecureLab.Api.Data.Entities;
++
++namespace SecureLab.Api.Security;
++
++// v1 canonical representation: a JSON array with fixed indexes; no input descriptions or secrets.
++public sealed class AuditIntegrity(IConfiguration config, SecureLabDbContext db)
++{
++    private static readonly SemaphoreSlim ProcessLock = new(1, 1);
++    private const long LockId = 6106062026;
++    private readonly string _path = config["AuditIntegrity:AnchorPath"]
++        ?? throw new InvalidOperationException("AuditIntegrity:AnchorPath is required");
++    private byte[] Key => LoadKey();
++
++    private byte[] LoadKey()
++    {
++        var secret = config["AuditIntegrity:HmacKey"]
++            ?? throw new InvalidOperationException("AuditIntegrity:HmacKey is required");
++        byte[] key;
++        try { key = Convert.FromBase64String(secret); }
++        catch (FormatException ex) { throw new InvalidOperationException("HMAC key must be base64", ex); }
++        if (key.Length < 32) throw new InvalidOperationException("HMAC key must have at least 256 bits");
++        return key;
++    }
++
++    public static AuditIntegrityEvent Describe(HttpContext http, string action, Guid? entityId, string outcome)
++        => new()
++        {
++            TimestampUtc = DateTimeOffset.UtcNow,
++            EventType = action.StartsWith("auth.", StringComparison.Ordinal) ? "authentication" : "incident",
++            ActorUserId = Guid.TryParse(http.User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null,
++            EntityType = entityId.HasValue ? "Incident" : "Session",
++            EntityId = entityId?.ToString("D", CultureInfo.InvariantCulture),
++            Action = action,
++            Outcome = outcome,
++            TraceId = http.TraceIdentifier
++        };
++
++    private static string Canonical(AuditIntegrityEvent e)
++        => JsonSerializer.Serialize(new object?[]
++        {
++            "audit-v1", e.SequenceNumber,
++            e.TimestampUtc.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss.ffffff'Z'", CultureInfo.InvariantCulture),
++            e.EventType, e.ActorUserId?.ToString("D", CultureInfo.InvariantCulture), e.EntityType,
++            e.EntityId, e.Action, e.Outcome, e.TraceId, e.PreviousHmac
++        });
++
++    private string Mac(string content) => Convert.ToHexString(HMACSHA256.HashData(Key, Encoding.UTF8.GetBytes(content)));
++    private string AnchorMac(long seq, string hash) => Mac($"anchor-v1\n{seq}\n{hash}");
++    private static bool SameHex(string a, string b)
++    {
++        try { return CryptographicOperations.FixedTimeEquals(Convert.FromHexString(a), Convert.FromHexString(b)); }
++        catch (FormatException) { return false; }
++    }
++    private sealed record Anchor(long Sequence, string Hash, string Signature);
++    private Anchor ReadAnchor()
++    {
++        if (!File.Exists(_path)) throw new InvalidOperationException("Audit anchor missing: manual review required");
++        var anchor = JsonSerializer.Deserialize<Anchor>(File.ReadAllText(_path))
++            ?? throw new InvalidOperationException("Invalid anchor");
++        if (!SameHex(anchor.Signature, AnchorMac(anchor.Sequence, anchor.Hash)))
++            throw new InvalidOperationException("Anchor signature invalid");
++        return anchor;
++    }
++    private void WriteAnchor(long sequence, string hash)
++    {
++        var dir = Path.GetDirectoryName(Path.GetFullPath(_path))!;
++        Directory.CreateDirectory(dir);
++        var temp = _path + ".tmp";
++        var payload = JsonSerializer.SerializeToUtf8Bytes(
++            new Anchor(sequence, hash, AnchorMac(sequence, hash)));
++        using (var file = new FileStream(temp, FileMode.Create, FileAccess.Write, FileShare.None))
++        {
++            file.Write(payload);
++            file.Flush(flushToDisk: true);
++        }
++        // Atomic rename on the same filesystem. The anchor directory must be kept
++        // outside Git and inaccessible to the PostgreSQL account.
++        File.Move(temp, _path, true);
++    }
++
++    private async Task<List<AuditIntegrityEvent>> VerifyDbAsync(CancellationToken ct)
++    {
++        var events = await db.AuditIntegrityEvents.AsNoTracking().OrderBy(x => x.SequenceNumber).ToListAsync(ct);
++        var hash = "GENESIS";
++        long seq = 0;
++        foreach (var e in events)
++        {
++            if (e.SequenceNumber != ++seq || e.PreviousHmac != hash || !SameHex(e.CurrentHmac, Mac(Canonical(e))))
++                throw new InvalidOperationException($"Audit integrity violation at sequence {seq}");
++            hash = e.CurrentHmac;
++        }
++        return events;
++    }
++    private void CheckAnchor(IReadOnlyList<AuditIntegrityEvent> records)
++    {
++        var anchor = ReadAnchor();
++        var lastSeq = records.Count == 0 ? 0 : records[^1].SequenceNumber;
++        var lastHash = records.Count == 0 ? "GENESIS" : records[^1].CurrentHmac;
++        if (anchor.Sequence != lastSeq || anchor.Hash != lastHash)
++            throw new InvalidOperationException("Audit anchor mismatch (including tail truncation / crash): investigate, never auto-heal");
++    }
++    private async Task<FileStream> AcquireFileLockAsync(CancellationToken ct)
++    {
++        var lockPath = _path + ".lock";
++        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(lockPath))!);
++        for (var attempt = 0; attempt < 200; attempt++)
++        {
++            ct.ThrowIfCancellationRequested();
++            try { return new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None); }
++            catch (IOException) { await Task.Delay(50, ct); }
++        }
++        throw new TimeoutException("Could not acquire audit anchor writer lock");
++    }
++
++    // Execute mutation and audit insertion in the SAME DB transaction; publish anchor AFTER commit.
++    // If the process crashes between commit and anchor, verification fails CLOSED, requiring operator review.
++    public async Task ExecuteAsync(AuditIntegrityEvent record, Func<Task> mutation, CancellationToken ct = default)
++    {
++        await ProcessLock.WaitAsync(ct);
++        try
++        {
++            using var fileLock = await AcquireFileLockAsync(ct);
++            await using var tx = await db.Database.BeginTransactionAsync(ct);
++            await db.Database.ExecuteSqlRawAsync($"SELECT pg_advisory_xact_lock({LockId})", ct);
++            var records = await VerifyDbAsync(ct);
++            CheckAnchor(records);
++            await mutation();
++            var previous = records.Count == 0 ? "GENESIS" : records[^1].CurrentHmac;
++            record.SequenceNumber = records.Count == 0 ? 1 : records[^1].SequenceNumber + 1;
++            record.PreviousHmac = previous;
++            record.CurrentHmac = Mac(Canonical(record));
++            db.AuditIntegrityEvents.Add(record);
++            await db.SaveChangesAsync(ct);
++            await tx.CommitAsync(ct);
++            WriteAnchor(record.SequenceNumber, record.CurrentHmac);
++        }
++        finally { ProcessLock.Release(); }
++    }
++    public Task AppendAsync(AuditIntegrityEvent record, CancellationToken ct = default)
++        => ExecuteAsync(record, () => Task.CompletedTask, ct);
++
++    // Explicit provisioning ONLY when database chain is empty. Never accept an arbitrary existing chain.
++    public async Task InitializeEmptyAsync(CancellationToken ct = default)
++    {
++        await ProcessLock.WaitAsync(ct);
++        try
++        {
++            using var fileLock = await AcquireFileLockAsync(ct);
++            await using var tx = await db.Database.BeginTransactionAsync(ct);
++            await db.Database.ExecuteSqlRawAsync($"SELECT pg_advisory_xact_lock({LockId})", ct);
++            if (await db.AuditIntegrityEvents.AnyAsync(ct))
++                throw new InvalidOperationException("Nonempty audit DB: cannot initialize anchor");
++            if (File.Exists(_path)) throw new InvalidOperationException("Anchor already exists");
++            WriteAnchor(0, "GENESIS");
++            await tx.CommitAsync(ct);
++        }
++        finally { ProcessLock.Release(); }
++    }
++    public async Task<(int Count, long LastSequence)> VerifyAsync(CancellationToken ct = default)
++    {
++        await ProcessLock.WaitAsync(ct);
++        try
++        {
++            using var fileLock = await AcquireFileLockAsync(ct);
++            await using var tx = await db.Database.BeginTransactionAsync(ct);
++            await db.Database.ExecuteSqlRawAsync($"SELECT pg_advisory_xact_lock({LockId})", ct);
++            var records = await VerifyDbAsync(ct);
++            CheckAnchor(records);
++            await tx.CommitAsync(ct);
++            return (records.Count, records.Count == 0 ? 0 : records[^1].SequenceNumber);
++        }
++        finally { ProcessLock.Release(); }
++    }
++}

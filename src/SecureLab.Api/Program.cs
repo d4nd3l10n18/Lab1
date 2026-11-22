@@ -24,6 +24,7 @@ var connectionString = builder.Configuration.GetConnectionString("SecureLab")
 builder.Services.AddDbContext<SecureLabDbContext>(options =>
     options.UseNpgsql(connectionString));
 builder.Services.AddScoped<IncidentQueries>();
+builder.Services.AddScoped<AuditIntegrity>();
 builder.Services.AddAntiforgery(options =>
 {
     options.HeaderName = "X-SecureLab-CSRF";
@@ -60,6 +61,25 @@ await DatabaseBootstrap.InitializeAsync(app.Services, app.Configuration, app.Env
 
 if (resetRequested)
 {
+    return;
+}
+
+// Local-only integrity CLI: no public verification endpoint.
+if (args.Contains("--audit-init", StringComparer.Ordinal)
+    || args.Contains("--audit-verify", StringComparer.Ordinal))
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    var audit = scope.ServiceProvider.GetRequiredService<AuditIntegrity>();
+    if (args.Contains("--audit-init", StringComparer.Ordinal))
+    {
+        await audit.InitializeEmptyAsync();
+        Console.WriteLine("AUDIT INITIALIZED");
+    }
+    else
+    {
+        var result = await audit.VerifyAsync();
+        Console.WriteLine($"AUDIT OK count={result.Count}, last_sequence={result.LastSequence}");
+    }
     return;
 }
 

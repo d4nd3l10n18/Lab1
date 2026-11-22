@@ -204,6 +204,7 @@ public static class IncidentEndpoints
         IAuthorizationService authorizationService,
         IncidentQueries queries,
         SecureLabDbContext dbContext,
+        AuditIntegrity audit,
         CancellationToken cancellationToken)
     {
         var incident = await queries.FindAsync(id, track: true, cancellationToken);
@@ -219,6 +220,7 @@ public static class IncidentEndpoints
 
         if (!await IsAllowedAsync(authorizationService, httpContext, incident, IncidentOperations.Update))
         {
+            await audit.AppendAsync(AuditIntegrity.Describe(httpContext, "incident.update", id, "denied"), cancellationToken);
             return Results.Forbid();
         }
 
@@ -231,7 +233,9 @@ public static class IncidentEndpoints
         incident.Title = request.Title!.Trim();
         incident.Description = request.Description!.Trim();
         incident.UpdatedAtUtc = DateTimeOffset.UtcNow;
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await audit.ExecuteAsync(
+            AuditIntegrity.Describe(httpContext, "incident.update", id, "success"),
+            () => dbContext.SaveChangesAsync(cancellationToken), cancellationToken);
         return Results.NoContent();
     }
 
@@ -242,6 +246,7 @@ public static class IncidentEndpoints
         IAuthorizationService authorizationService,
         IncidentQueries queries,
         SecureLabDbContext dbContext,
+        AuditIntegrity audit,
         CancellationToken cancellationToken)
     {
         var incident = await queries.FindAsync(id, track: true, cancellationToken);
@@ -257,11 +262,14 @@ public static class IncidentEndpoints
 
         if (!await IsAllowedAsync(authorizationService, httpContext, incident, IncidentOperations.Delete))
         {
+            await audit.AppendAsync(AuditIntegrity.Describe(httpContext, "incident.delete", id, "denied"), cancellationToken);
             return Results.Forbid();
         }
 
         dbContext.Incidents.Remove(incident);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await audit.ExecuteAsync(
+            AuditIntegrity.Describe(httpContext, "incident.delete", id, "success"),
+            () => dbContext.SaveChangesAsync(cancellationToken), cancellationToken);
         return Results.NoContent();
     }
 
@@ -273,6 +281,7 @@ public static class IncidentEndpoints
         IncidentQueries queries,
         SecureLabDbContext dbContext,
         ILoggerFactory loggerFactory,
+        AuditIntegrity audit,
         CancellationToken cancellationToken)
     {
         var incident = await queries.FindAsync(id, track: true, cancellationToken);
@@ -284,12 +293,14 @@ public static class IncidentEndpoints
         if (!await IsAllowedAsync(authorizationService, httpContext, incident, IncidentOperations.Read))
         {
             LogDenied(loggerFactory, httpContext, "incident.triage", incident.Id);
+            await audit.AppendAsync(AuditIntegrity.Describe(httpContext, "incident.triage", id, "denied"), cancellationToken);
             return IncidentNotFound();
         }
 
         if (!await IsAllowedAsync(authorizationService, httpContext, incident, IncidentOperations.Triage))
         {
             LogDenied(loggerFactory, httpContext, "incident.triage", incident.Id);
+            await audit.AppendAsync(AuditIntegrity.Describe(httpContext, "incident.triage", id, "denied"), cancellationToken);
             return Results.Forbid();
         }
 
@@ -320,7 +331,9 @@ public static class IncidentEndpoints
             Note = "Triage через API.",
             CreatedAtUtc = now
         });
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await audit.ExecuteAsync(
+            AuditIntegrity.Describe(httpContext, "incident.triage", id, "success"),
+            () => dbContext.SaveChangesAsync(cancellationToken), cancellationToken);
         return Results.NoContent();
     }
 

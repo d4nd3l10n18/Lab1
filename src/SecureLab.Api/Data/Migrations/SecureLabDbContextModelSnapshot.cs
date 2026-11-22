@@ -22,6 +22,23 @@ namespace SecureLab.Api.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("SecureLab.Api.Data.Entities.AuditIntegrityEvent", b =>
+                {
+                    b.Property<long>("SequenceNumber").ValueGeneratedNever().HasColumnType("bigint");
+                    b.Property<DateTimeOffset>("TimestampUtc").HasColumnType("timestamp with time zone");
+                    b.Property<string>("EventType").IsRequired().HasMaxLength(64).HasColumnType("character varying(64)");
+                    b.Property<Guid?>("ActorUserId").HasColumnType("uuid");
+                    b.Property<string>("EntityType").IsRequired().HasMaxLength(40).HasColumnType("character varying(40)");
+                    b.Property<string>("EntityId").HasMaxLength(80).HasColumnType("character varying(80)");
+                    b.Property<string>("Action").IsRequired().HasMaxLength(100).HasColumnType("character varying(100)");
+                    b.Property<string>("Outcome").IsRequired().HasMaxLength(24).HasColumnType("character varying(24)");
+                    b.Property<string>("TraceId").IsRequired().HasMaxLength(160).HasColumnType("character varying(160)");
+                    b.Property<string>("PreviousHmac").IsRequired().HasMaxLength(64).HasColumnType("character varying(64)");
+                    b.Property<string>("CurrentHmac").IsRequired().HasMaxLength(64).HasColumnType("character varying(64)");
+                    b.HasKey("SequenceNumber");
+                    b.ToTable("AuditIntegrityEvents", (string)null);
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", b =>
                 {
                     b.Property<Guid>("Id")

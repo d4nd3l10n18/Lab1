@@ -8,6 +8,7 @@ namespace SecureLab.Api.Data;
 public sealed class SecureLabDbContext(DbContextOptions<SecureLabDbContext> options)
     : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>(options)
 {
+    public DbSet<AuditIntegrityEvent> AuditIntegrityEvents => Set<AuditIntegrityEvent>();
     public DbSet<Incident> Incidents => Set<Incident>();
     public DbSet<IncidentComment> IncidentComments => Set<IncidentComment>();
     public DbSet<IncidentStatusHistory> IncidentStatusHistory => Set<IncidentStatusHistory>();
@@ -27,6 +28,19 @@ public sealed class SecureLabDbContext(DbContextOptions<SecureLabDbContext> opti
         modelBuilder.Entity<IdentityUserLogin<Guid>>().ToTable("identity_user_logins");
         modelBuilder.Entity<IdentityRoleClaim<Guid>>().ToTable("identity_role_claims");
         modelBuilder.Entity<IdentityUserToken<Guid>>().ToTable("identity_user_tokens");
+
+        var audit = modelBuilder.Entity<AuditIntegrityEvent>();
+        audit.ToTable("AuditIntegrityEvents");
+        audit.HasKey(x => x.SequenceNumber);
+        audit.Property(x => x.SequenceNumber).ValueGeneratedNever();
+        audit.Property(x => x.EventType).HasMaxLength(64).IsRequired();
+        audit.Property(x => x.EntityType).HasMaxLength(40).IsRequired();
+        audit.Property(x => x.EntityId).HasMaxLength(80);
+        audit.Property(x => x.Action).HasMaxLength(100).IsRequired();
+        audit.Property(x => x.Outcome).HasMaxLength(24).IsRequired();
+        audit.Property(x => x.TraceId).HasMaxLength(160).IsRequired();
+        audit.Property(x => x.PreviousHmac).HasMaxLength(64).IsRequired();
+        audit.Property(x => x.CurrentHmac).HasMaxLength(64).IsRequired();
 
         var incident = modelBuilder.Entity<Incident>();
         incident.ToTable("incidents");
