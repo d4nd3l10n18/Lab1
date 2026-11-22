@@ -37,3 +37,7 @@ infra/.env
 
 # Lab 6 : Evidence
 **/evidence-lab06/
+
+
+# Audit-integrity protected local files
+audit-integrity-local/
