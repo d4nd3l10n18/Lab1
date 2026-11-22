@@ -16,13 +16,15 @@ public static class LoginRateLimiting
 
             options.OnRejected = (context, _) =>
             {
+                var isLogin = context.HttpContext.Request.Path
+                    .StartsWithSegments("/api/auth/login");
                 var logger = context.HttpContext.RequestServices
                     .GetRequiredService<ILoggerFactory>()
-                    .CreateLogger("SecureLab.Auth");
+                    .CreateLogger(isLogin ? "SecureLab.Auth" : "SecureLab.RateLimit");
 
                 logger.LogWarning(
                     "Auth event {EventType}: result {Result}, at {OccurredAtUtc}, trace {TraceId}",
-                    "login",
+                    isLogin ? "login" : "incident.search",
                     "rate_limited",
                     DateTimeOffset.UtcNow,
                     context.HttpContext.TraceIdentifier);
@@ -62,13 +64,17 @@ public static class LoginRateLimiting
                 )?.Value;
 
                 var partitionKey = userId ?? "anonymous";
+                var cfg = http.RequestServices.GetRequiredService<IConfiguration>()
+                    .GetSection("RateLimiting:Search");
+                var permit = cfg.GetValue("PermitLimit", 3);
+                var window = TimeSpan.FromSeconds(cfg.GetValue("WindowSeconds", 10));
 
                 return RateLimitPartition.GetFixedWindowLimiter(
                     partitionKey: partitionKey,
                     factory: _ => new FixedWindowRateLimiterOptions
                     {
-                        PermitLimit = 3,
-                        Window = TimeSpan.FromSeconds(10),
+                        PermitLimit = permit,
+                        Window = window,
                         QueueLimit = 0,
                         AutoReplenishment = true
                     });

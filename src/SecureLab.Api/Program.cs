@@ -17,12 +17,20 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
 
-var connectionString = builder.Configuration.GetConnectionString("SecureLab")
-    ?? throw new InvalidOperationException(
-        "Connection string 'SecureLab' не налаштовано.");
 
-builder.Services.AddDbContext<SecureLabDbContext>(options =>
-    options.UseNpgsql(connectionString));
+builder.Services.AddDbContext<SecureLabDbContext>((serviceProvider, options) =>
+{
+    var configuration = serviceProvider
+        .GetRequiredService<IConfiguration>();
+
+    var connectionString = configuration
+        .GetConnectionString("SecureLab")
+        ?? throw new InvalidOperationException(
+            "Connection string 'SecureLab' не налаштовано.");
+
+    options.UseNpgsql(connectionString);
+});
+
 builder.Services.AddScoped<IncidentQueries>();
 builder.Services.AddScoped<AuditIntegrity>();
 builder.Services.AddAntiforgery(options =>
@@ -62,6 +70,19 @@ await DatabaseBootstrap.InitializeAsync(app.Services, app.Configuration, app.Env
 if (resetRequested)
 {
     return;
+}
+
+// Only the isolated test host may provision a new empty audit anchor automatically.
+// Production and Development CLI still require explicit --audit-init.
+if (app.Environment.IsDevelopment() &&
+    builder.Configuration.GetValue<bool>("AuditIntegrity:InitializeEmptyForTests"))
+{
+    var testAnchorPath = builder.Configuration["AuditIntegrity:AnchorPath"];
+    if (!string.IsNullOrWhiteSpace(testAnchorPath) && !File.Exists(testAnchorPath))
+    {
+        await using var scope = app.Services.CreateAsyncScope();
+        await scope.ServiceProvider.GetRequiredService<AuditIntegrity>().InitializeEmptyAsync();
+    }
 }
 
 // Local-only integrity CLI: no public verification endpoint.
